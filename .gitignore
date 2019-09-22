@@ -1,0 +1,5 @@
+*.log
+*.pth
+
+#Directory
+shapenetcore_partanno_segmentation_benchmark_v0
