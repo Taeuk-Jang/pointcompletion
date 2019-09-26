@@ -6,6 +6,8 @@ import torch
 import torch.nn.parallel
 import torch.utils.data
 from torch.autograd import Variable
+import sys
+sys.path.append("..")
 from pointnet.dataset import ShapeNetDataset
 from pointnet.model import PointNetDenseCls
 import matplotlib.pyplot as plt
@@ -20,9 +22,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='completion/seg_model_Chair_24.pth', help='model path')
 parser.add_argument('--idx', type=int, default=0, help='model index')
 parser.add_argument('--dataset', type=str, default='/home/cdi0/data/shape_net_core_uniform_samples_2048_split/', help='dataset path')
+parser.add_argument('--device', type=str, default='cuda:0', help='dataset path')
 
 #parser.add_argument('--class_choice', type=str, default='', help='class choice')
-device = 'cuda:1'
+
 
 opt = parser.parse_args()
 print(opt)
@@ -31,7 +34,7 @@ d = ShapeNetDataset(
     dir=opt.dataset,
     train='test',
     )
-
+device = opt.device
 idx = opt.idx
 print(d.lst[idx])
 print("model %d/%d" % (idx, len(d)))
@@ -42,7 +45,7 @@ print(point.shape, target.shape)
 
 
 state_dict = torch.load(opt.model)
-classifier = PointNetDenseCls()
+classifier = PointNetDenseCls(device = device)
 classifier.load_state_dict(state_dict)
 classifier.to(device)
 classifier.eval()

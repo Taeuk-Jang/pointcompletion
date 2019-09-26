@@ -187,13 +187,19 @@ class PointNetCls(nn.Module):
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
         self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        self.k = k
 
     def forward(self, x):
         x = self.feat(x)
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.dropout(self.fc2(x))))
         x = self.fc3(x)
-        return F.log_softmax(x, dim=1)
+        if self.k ==1:
+            x = self.sigmoid(x)
+        else:
+            x = F.log_softmax(x, dim=1)
+        return x
 
 
 class PointNetDenseCls(nn.Module):
@@ -225,20 +231,20 @@ class PointNetDenseCls(nn.Module):
         return x
     
 class GlobalDiscriminator(nn.Module):
-    def __init__(self, k = 2, device = 'cuda:1', feature_transform=False):
+    def __init__(self, k = 1, device = 'cuda:1', feature_transform=False):
         super(GlobalDiscriminator, self).__init__()
         self.feature_transform=feature_transform
-        self.feat = PointNetCls(k= 2, device = device, feature_transform=feature_transform)
+        self.feat = PointNetCls(k= 1, device = device, feature_transform=feature_transform)
 
     def forward(self, x):
         x = self.feat(x)
         return x
 
 class LocalDiscriminator(nn.Module):
-    def __init__(self, k = 2, device = 'cuda:1', feature_transform=False):
+    def __init__(self, k = 1, device = 'cuda:1', feature_transform=False):
         super(LocalDiscriminator, self).__init__()
         self.feature_transform=feature_transform
-        self.feat = PointNetCls(k= 2, device = device, feature_transform=feature_transform)
+        self.feat = PointNetCls(k= 1, device = device, feature_transform=feature_transform)
 
     def forward(self, x):
         x = self.feat(x)

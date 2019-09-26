@@ -89,6 +89,9 @@ class ShapeNetDataset(data.Dataset):
         input_pnt = input_pcd.shape[0]
         mask = np.isin(target_pcd,input_pcd)
         m = np.all(mask, axis = 1)
+        if m.sum().item() < input_pnt:
+            p = input_pnt-m.sum().item()
+            m[-p:] = 1
         
         t = np.zeros((target_pcd.shape[0],4))
         t[:,3] = m
@@ -97,6 +100,9 @@ class ShapeNetDataset(data.Dataset):
         for i in range(len(m)):
             if m[i] == 1 and n<input_pnt:
                 t[i,:3] = input_pcd[n]
+                n +=1
+            elif m[i] == 1 and n>=input_pnt:
+                m[i] = 0
                 n +=1
             else:
                 t[i,:3] = np.random.randn(1,3) / 5
