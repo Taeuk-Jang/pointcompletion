@@ -203,32 +203,52 @@ class PointNetCls(nn.Module):
 
 
 class PointNetDenseCls(nn.Module):
-    def __init__(self, device = 'cuda:1', feature_transform=False):
+    def __init__(self, k = 3, device = 'cuda:1', channel = 4, feature_transform=False):
         super(PointNetDenseCls, self).__init__()
-        #self.k = k
+        self.k = k
         self.feature_transform=feature_transform
-        self.feat = PointNetfeat(device = device, channel = 4, global_feat=False, feature_transform=feature_transform)
+        self.channel = channel
+        self.feat = PointNetfeat(device = device, channel = self.channel, global_feat=False, feature_transform=feature_transform)
         self.conv1 = torch.nn.Conv1d(1088, 512, 1)
         self.conv2 = torch.nn.Conv1d(512, 256, 1)
         self.conv3 = torch.nn.Conv1d(256, 128, 1)
-        self.conv4 = torch.nn.Conv1d(128, 3, 1)
+        self.conv4 = torch.nn.Conv1d(128, self.k, 1)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
         self.bn3 = nn.BatchNorm1d(128)
+        self.sigmoid = nn.Sigmoid()
+        self.device = device
 
     def forward(self, x):
         batchsize = x.size()[0]
         n_pts = x.size()[2]
-        x = self.feat(x)
-        
+        x = self.feat(x)        
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         x = self.conv4(x)
         x = x.transpose(2,1).contiguous()
         #x = F.log_softmax(x.view(-1,self.k), dim=-1)
-        x = x.view(batchsize, n_pts, 3)
+        if self.k ==1:
+            x = self.sigmoid(x.view(batchsize, n_pts))
+        else:
+            x = x.view(batchsize, n_pts, self.k)
         return x
+    
+class Autoencoder(nn.Module):
+    def __init__(self, device = 'cuda:1', feature_transform=False):
+        super(Autoencoder, self).__init__()
+        self.device = device
+        self.pointgen = PointNetDenseCls(k=3, device = self.device)
+        self.conf = PointNetDenseCls(k=1, device = self.device, channel = 3)
+        
+    def forward(self, x):
+        x_gen = self.pointgen(x)
+        
+        x_conf = self.conf(x_gen.transpose(1,2))
+        
+        return x_gen, x_conf
+    
     
 class GlobalDiscriminator(nn.Module):
     def __init__(self, k = 1, device = 'cuda:1', feature_transform=False):

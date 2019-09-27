@@ -41,7 +41,7 @@ def distChamfer(a, b):
     rx = xx[:, diag_ind, diag_ind].unsqueeze(1).expand_as(xx)
     ry = yy[:, diag_ind, diag_ind].unsqueeze(1).expand_as(yy)
     P = rx.transpose(2, 1) + ry - 2 * zz
-    return P.min(1)[0], P.min(2)[0]
+    return P.min(1)[0].mean(1) + P.min(2)[0].mean(1)
 
 
 parser = argparse.ArgumentParser()
@@ -57,6 +57,8 @@ parser.add_argument('--dataset', default = '/home/cdi0/data/shape_net_core_unifo
 parser.add_argument('--class_choice', type=str, default='Chair', help="class_choice")
 parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
 parser.add_argument('--device', type=str, default='cuda:1', help='gpu device')
+parser.add_argument('--w', default=0.015, help='learning rate')
+parser.add_argument('--w_rate', default=0.3, help='learning rate decay rate')
 
 opt = parser.parse_args()
 print(opt)

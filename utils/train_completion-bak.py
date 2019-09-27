@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+import sys
+sys.path.append("..")
 from pointnet.dataset import ShapeNetDataset
 from pointnet.model import PointNetDenseCls, feature_transform_regularizer
 import torch.nn.functional as F
@@ -135,6 +137,7 @@ for epoch in range(opt.nepoch):
         #loss = torch.sum(cost)
         dist1, dist2 = criterion(pred, target)
         loss = (torch.mean(dist1)) + (torch.mean(dist2))
+        print(loss.shape)
         loss.backward()
         #loss.backward()
         

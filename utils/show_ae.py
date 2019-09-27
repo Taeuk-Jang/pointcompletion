@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import sys
 sys.path.append("..")
 from pointnet.dataset import ShapeNetDataset
-from pointnet.model import PointNetDenseCls
+from pointnet.model import Autoencoder
 import matplotlib.pyplot as plt
 from pointnet.plyfile import PlyData
 from pyntcloud import PyntCloud
@@ -45,7 +45,7 @@ print(point.shape, target.shape)
 
 
 state_dict = torch.load(opt.model, map_location='cpu')
-classifier = PointNetDenseCls(device = device)
+classifier = Autoencoder(device = device)
 classifier.load_state_dict(state_dict)
 classifier.to(device)
 classifier.eval()
@@ -75,7 +75,7 @@ point, target = point.unsqueeze(0), target.unsqueeze(0)
 
 #target = Variable(target.view(1, target.size()[0], target.size()[1]))
 
-pred = classifier(point)
+pred, conf = classifier(point)
 
 
 #points = points.transpose(2, 1)
@@ -94,6 +94,7 @@ print(pred.shape)
 print(target.shape)
 print(mask_.shape)
 print(mask__.shape)
+print('mean confidence value : %f'% conf.min().item())
 
 pred = (pred * mask__) + (target * mask_)
 
