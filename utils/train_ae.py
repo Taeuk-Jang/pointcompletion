@@ -80,6 +80,7 @@ parser.add_argument('--feature_transform', default = False, action='store_true',
 parser.add_argument('--device', type=str, default='cuda:1', help='gpu device')
 parser.add_argument('--multigpu', type=bool, default=False, help='gpu device')
 parser.add_argument('--w', type=float, default=0.015, help='learning rate')
+parser.add_argument('--reverse', type=bool, default=True, help='learning rate')
 parser.add_argument('--w_rate', default=0.3, help='learning rate decay rate')
 
 
@@ -97,7 +98,7 @@ stage = 0
 
 
 dataset = ShapeNetDataset(
-    dir=opt.dataset, stage = stage
+    dir=opt.dataset, stage = stage, reverse = opt.reverse
     )
 dataloader = torch.utils.data.DataLoader(
     dataset,
@@ -106,7 +107,7 @@ dataloader = torch.utils.data.DataLoader(
     num_workers=int(opt.workers))
 
 test_dataset = ShapeNetDataset(
-    dir=opt.dataset, stage = stage,
+    dir=opt.dataset, stage = stage, reverse = opt.reverse,
     train='test',
     )
 testdataloader = torch.utils.data.DataLoader(
@@ -134,24 +135,40 @@ ae = Autoencoder(device = device, feature_transform=opt.feature_transform)
 #localD = LocalDiscriminator(k = 2, device = device)
 #globalD = GlobalDiscriminator(k = 2, device = device)
 
-if opt.model != '':
-    ae.load_state_dict(torch.load(opt.model))
 
-optimizerAE = optim.Adam(ae.parameters(), lr=0.0005, betas=(0.9, 0.999))
+
+optimizerAE = optim.Adam(ae.parameters(), lr=0.0007, betas=(0.9, 0.999))
 #optimizerD = optim.Adam(list(globalD.parameters())+list(localD.parameters()), lr=0.0005, betas=(0.9, 0.999))
 
 schedulerAE = optim.lr_scheduler.StepLR(optimizerAE, step_size=20, gamma=0.5)
 #schedulerD = optim.lr_scheduler.StepLR(optimizerD, step_size=20, gamma=0.5)
 
+
 if opt.multigpu:
     ae = nn.DataParallel(ae)
+if opt.model != '':
+    state_dict = torch.load(opt.model, map_location='cpu')
+    multi = opt.model.split('/')[1]
+    if multi[:4] == 'mult' and opt.multigpu == False:
+        keys = state_dict.keys()
+        values = state_dict.values()
+
+        new_keys = []
+        for key in keys:
+            new_key = key[7:]    # remove the 'module.'
+            new_keys.append(new_key)
+
+        new_dict = OrderedDict(list(zip(new_keys, values)))
+        state_dict = new_dict
+        ae.load_state_dict(torch.load(state_dict))
 ae.to(device)
+
+
 #localD.to(device)
 #globalD.to(device)
-if opt.multigpu:
-    criterion = (distChamfer_withconf)
-else:
-    criterion = distChamfer_withconf
+
+criterion = distChamfer_withconf
+
 #Dcriterion = nn.BCELoss()
 #Dcriterion = F.nll_loss
 
@@ -166,9 +183,10 @@ best_loss = np.inf
 loss_avg = np.inf
 
 for epoch in range(opt.nepoch):
+    print('average loss : %f ' % loss_avg)
     if loss_avg < 0.0015:
         stage += 1
-        print('switch data to stage %d' % stage)
+        
         
         dataset = ShapeNetDataset(
             dir=opt.dataset, stage = stage
@@ -189,8 +207,10 @@ for epoch in range(opt.nepoch):
             shuffle=True,
             num_workers=int(opt.workers),
             drop_last=True)
-
+        
+        print('switch data to stage %d with total %d data' % stage, len(dataset))
         print(len(dataset), len(test_dataset))
+        best_loss = np.inf
         
     loss_avg = 0
     for i, data in (enumerate(dataloader, 0)):
@@ -306,7 +326,8 @@ for epoch in range(opt.nepoch):
             #    writer.add_histogram(name, param.clone().cpu().data.numpy(), 27 * epoch + n)
             #for name, param in netG.named_parameters():
             #    writer.add_histogram(name, param.clone().cpu().data.numpy(), 27 * epoch + n)
-
+        if i >= num_batch:
+            continue
     schedulerAE.step()
 
     if loss.item() < best_loss:

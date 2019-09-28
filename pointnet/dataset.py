@@ -66,7 +66,7 @@ def load_list(root, train = 'train'):
     return input_set_list
 
 class ShapeNetDataset(data.Dataset):
-    def __init__(self, dir, train = 'train', n_points = 2048, augmentation = False, stage = 0, opt = None):
+    def __init__(self, dir, train = 'train', n_points = 2048, augmentation = False, stage = 0, reverse = True, opt = None):
         
         self.root = dir
         self.loader = load_ply
@@ -74,8 +74,14 @@ class ShapeNetDataset(data.Dataset):
         self.train = train
         
         lst = load_list(dir, self.train)
-            
-        self.lst = lst[-(1+stage)]
+        l = []
+        if reverse == True:  
+            for i in range(stage+1):
+                l = l + lst[-(i+1)]
+        else:
+            for i in range(stage+1):
+                l = l + lst[i]
+        self.lst = l
         self.loader = load_ply
         
     def __getitem__(self, idx):
