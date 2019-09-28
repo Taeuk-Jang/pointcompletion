@@ -79,7 +79,7 @@ parser.add_argument('--class_choice', type=str, default='Chair', help="class_cho
 parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
 parser.add_argument('--device', type=str, default='cuda:1', help='gpu device')
 parser.add_argument('--multigpu', type=bool, default=False, help='gpu device')
-parser.add_argument('--w', default=0.015, help='learning rate')
+parser.add_argument('--w', type=float, default=0.015, help='learning rate')
 parser.add_argument('--w_rate', default=0.3, help='learning rate decay rate')
 
 
@@ -92,8 +92,12 @@ print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 w = opt.w
+stage = 0
+
+
+
 dataset = ShapeNetDataset(
-    dir=opt.dataset,
+    dir=opt.dataset, stage = stage
     )
 dataloader = torch.utils.data.DataLoader(
     dataset,
@@ -102,7 +106,7 @@ dataloader = torch.utils.data.DataLoader(
     num_workers=int(opt.workers))
 
 test_dataset = ShapeNetDataset(
-    dir=opt.dataset,
+    dir=opt.dataset, stage = stage,
     train='test',
     )
 testdataloader = torch.utils.data.DataLoader(
@@ -151,15 +155,44 @@ else:
 #Dcriterion = nn.BCELoss()
 #Dcriterion = F.nll_loss
 
-real_label = 1
-fake_label = 0
+real_label = 1.
+fake_label = 0.
+
 
 num_batch = len(dataset) / opt.batchsize
 n = int(num_batch/100)
 writer = SummaryWriter()
 best_loss = np.inf
+loss_avg = np.inf
 
 for epoch in range(opt.nepoch):
+    if loss_avg < 0.0015:
+        stage += 1
+        print('switch data to stage %d' % stage)
+        
+        dataset = ShapeNetDataset(
+            dir=opt.dataset, stage = stage
+            )
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=opt.batchsize,
+            shuffle=True,
+            num_workers=int(opt.workers))
+
+        test_dataset = ShapeNetDataset(
+            dir=opt.dataset, stage = stage,
+            train='test',
+            )
+        testdataloader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=opt.batchsize,
+            shuffle=True,
+            num_workers=int(opt.workers),
+            drop_last=True)
+
+        print(len(dataset), len(test_dataset))
+        
+    loss_avg = 0
     for i, data in (enumerate(dataloader, 0)):
         points, target, mask = data
         points = points.transpose(2, 1)
@@ -203,7 +236,7 @@ for epoch in range(opt.nepoch):
             loss += feature_transform_regularizer(trans_feat) * 0.001
             
         optimizerAE.step()
-        
+        loss_avg += loss.item()/num_batch
         print('[%d: %d/%d] train loss: %f, mean confidence score : %f, min conf soce : %f   ' % (epoch, i, num_batch, loss.item(), mean_conf.item(), conf_min.item()))
 
         if i % 10 == 0:

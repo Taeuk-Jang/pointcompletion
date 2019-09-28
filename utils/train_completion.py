@@ -119,8 +119,8 @@ criterion = distChamfer
 Dcriterion = nn.BCELoss()
 #Dcriterion = F.nll_loss
 
-real_label = 1
-fake_label = 0
+real_label = 1.
+fake_label = 0.
 
 num_batch = len(dataset) / opt.batchsize
 writer = SummaryWriter()

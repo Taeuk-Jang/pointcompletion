@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from pointnet.plyfile import PlyData
 from pyntcloud import PyntCloud
 import pandas as pd
-
+from collections import OrderedDict
 #showpoints(np.random.randn(2500,3), c1 = np.random.uniform(0,1,size = (2500)))
 
 parser = argparse.ArgumentParser()
@@ -43,8 +43,20 @@ print(point.shape, target.shape)
 #point_np = point.numpy()
 
 
-
 state_dict = torch.load(opt.model, map_location='cpu')
+multi = opt.model.split('/')[1]
+if multi[:4] == 'mult':
+    keys = state_dict.keys()
+    values = state_dict.values()
+
+    new_keys = []
+    for key in keys:
+        new_key = key[7:]    # remove the 'module.'
+        new_keys.append(new_key)
+
+    new_dict = OrderedDict(list(zip(new_keys, values)))
+    state_dict = new_dict
+#state_dict = torch.load(opt.model, map_location='cpu')
 classifier = Autoencoder(device = device)
 classifier.load_state_dict(state_dict)
 classifier.to(device)

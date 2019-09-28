@@ -73,12 +73,9 @@ class ShapeNetDataset(data.Dataset):
         self.opt = opt
         self.train = train
         
-        lst = []
-        l = load_list(dir, self.train)
-        for i in range(stage+1):
-            lst = lst + l[-1]
+        lst = load_list(dir, self.train)
             
-        self.lst = lst
+        self.lst = lst[-(1+stage)]
         self.loader = load_ply
         
     def __getitem__(self, idx):
